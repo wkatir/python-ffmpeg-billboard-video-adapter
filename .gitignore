@@ -74,3 +74,5 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+secrets.toml

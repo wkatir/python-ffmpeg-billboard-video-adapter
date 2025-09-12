@@ -5,10 +5,8 @@ Specialized in billboard and LED display format adaptation
 
 import os
 import logging
-import tempfile
 from typing import Optional, Dict, Any, List, Tuple
 import ffmpeg
-import streamlit as st
 from pathlib import Path
 import imageio_ffmpeg
 
@@ -40,7 +38,6 @@ class VideoProcessor:
         target_h: int,
         mode: str = "fit",           # "fit" (pad) or "fill" (crop)
         blur_bg: bool = False,
-        mirror_bg: bool = False,     # NEW: mirror-pad extension
         legibility_boost: bool = False,
         roi_center: Optional[Tuple[float,float]] = None,   # (cx, cy) relative
         output_path: Optional[str] = None,

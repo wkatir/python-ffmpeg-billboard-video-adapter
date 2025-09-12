@@ -1,0 +1,18 @@
+# To configure environment variables:
+
+1. Create a file named ".env" in the project root
+2. Copy the following content:
+
+# Environment variables for Campaign Adaptation Software
+GOOGLE_API_KEY=AIzaSyBe7KwPkxwpmOr8M7wAOb4bZ6Hpt0X-Mnw
+
+# Optional settings:
+# TEMP_DIR=./temp
+# OUTPUT_DIR=./output
+# LOG_DIR=./logs
+# MAX_FILE_SIZE_MB=500
+
+3. Save the .env file
+4. The .env file is already in .gitignore, so it won't be uploaded to git
+
+NOTE: Your Google API key is included above. Keep this file secure.

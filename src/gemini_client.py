@@ -4,16 +4,13 @@ Google Gemini AI client for video analysis and ROI detection
 
 import os
 import logging
-import tempfile
 import json
 from typing import Optional, Dict, Any, List, Tuple
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
-import streamlit as st
 from pathlib import Path
 
 from .config import Config
-from .utils import create_temp_file, cleanup_temp_files
 
 logger = logging.getLogger(__name__)
 

@@ -17,8 +17,8 @@ logger = logging.getLogger("campaign-adapter")
 
 # Import our custom modules
 from src.config import Config
-from src.formats import STANDARD_FORMATS, ALL_FORMATS, get_format_categories, create_custom_format
-from src.utils import ensure_dirs, validate_ffmpeg_installation, create_temp_file, cleanup_temp_files, write_zip, validate_file_type
+from src.formats import ALL_FORMATS, get_format_categories
+from src.utils import ensure_dirs, validate_ffmpeg_installation, create_temp_file, write_zip, cleanup_old_files
 from src.video_processor import VideoProcessor
 from src.gemini_client import GeminiClient
 
@@ -36,6 +36,15 @@ def main():
     # Setup environment and configuration
     ensure_dirs()
     config = Config()
+    
+    # Clean up old temporary files (older than 24 hours)
+    try:
+        temp_cleaned = cleanup_old_files(config.TEMP_DIR, max_age_hours=24)
+        output_cleaned = cleanup_old_files(config.OUTPUT_DIR, max_age_hours=48)
+        if temp_cleaned > 0 or output_cleaned > 0:
+            logger.info(f"Cleaned up {temp_cleaned} temp files and {output_cleaned} output files")
+    except Exception as e:
+        logger.warning(f"File cleanup failed: {str(e)}")
     
     # Header
     st.title("🧩 Campaign Adaptation Software")
@@ -121,19 +130,16 @@ def main():
         # Save to temp file
         ext = Path(uploaded.name).suffix
         tmp_in = create_temp_file(ext)
-        with open(tmp_in, "wb") as f:
-            f.write(uploaded.read())
+        try:
+            with open(tmp_in, "wb") as f:
+                f.write(uploaded.read())
+        except Exception as e:
+            st.error(f"Failed to save uploaded file: {str(e)}")
+            st.stop()
         
-        # Get video info
+        # Get video info (for internal use only)
         vp = VideoProcessor()
         info = vp.get_video_info(tmp_in)
-        
-        # Display video info
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Resolution", f"{info.get('width','?')}×{info.get('height','?')}")
-        c2.metric("Duration", info.get("duration_formatted","?"))
-        c3.metric("FPS", f"{info.get('frame_rate',0):.2f}")
-        c4.metric("Codec", info.get("video_codec","?"))
     
     st.divider()
     st.subheader("🎯 Target Format Selection")
