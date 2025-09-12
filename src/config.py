@@ -1,27 +1,40 @@
 """
-Configuration management for the FFmpeg Billboard Video Adapter
+Configuration management for the Campaign Adaptation Software
 """
 
 import os
-from dataclasses import dataclass
-from typing import Dict, Any
+from dataclasses import dataclass, field
+from typing import Dict, Any, List
 import streamlit as st
 
 @dataclass
 class Config:
-    """Application configuration class"""
+    """Application configuration class for Campaign Adaptation Software"""
     
     # Video processing settings
     DEFAULT_OUTPUT_FORMAT: str = "mp4"
     DEFAULT_QUALITY: str = "high"
-    SUPPORTED_FORMATS: list = None
-    QUALITY_SETTINGS: Dict[str, Dict[str, Any]] = None
+    SUPPORTED_FORMATS: List[str] = field(default_factory=list)
+    QUALITY_SETTINGS: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     
     # File size limits (in MB)
     MAX_FILE_SIZE: int = 500
     
-    # Temporary directory settings
-    TEMP_DIR: str = None
+    # Directory settings
+    BASE_DIR: str = field(default_factory=os.getcwd)
+    TEMP_DIR: str = ""
+    OUTPUT_DIR: str = ""
+    LOG_DIR: str = ""
+    
+    # Campaign adaptation settings
+    DEFAULT_ADAPTATION_MODE: str = "fill"  # "fit" or "fill"
+    DEFAULT_BLUR_BACKGROUND: bool = False
+    DEFAULT_LEGIBILITY_BOOST: bool = True
+    DEFAULT_AI_GUIDED_CROP: bool = False
+    
+    # AI settings
+    DEFAULT_SAMPLE_FPS: float = 0.6
+    MAX_AI_FRAMES: int = 10
     
     def __post_init__(self):
         """Initialize configuration after object creation"""
@@ -31,39 +44,38 @@ class Config:
             'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm', 'm4v'
         ]
         
-        # Quality settings for FFmpeg
+        # Quality settings for FFmpeg (optimized for campaign content)
         self.QUALITY_SETTINGS = {
             "low": {
                 "video_bitrate": "500k",
                 "audio_bitrate": "64k",
-                "scale": "640:480",
                 "fps": 24
             },
             "medium": {
                 "video_bitrate": "1000k",
                 "audio_bitrate": "128k",
-                "scale": "1280:720",
                 "fps": 30
             },
             "high": {
                 "video_bitrate": "2000k",
                 "audio_bitrate": "192k",
-                "scale": "1920:1080",
                 "fps": 30
             },
             "ultra": {
                 "video_bitrate": "4000k",
                 "audio_bitrate": "320k",
-                "scale": "1920:1080",
                 "fps": 60
             }
         }
         
-        # Set temporary directory
-        self.TEMP_DIR = os.environ.get("TEMP_DIR", os.path.join(os.getcwd(), "temp"))
+        # Set directories
+        self.TEMP_DIR = os.environ.get("TEMP_DIR", os.path.join(self.BASE_DIR, "temp"))
+        self.OUTPUT_DIR = os.environ.get("OUTPUT_DIR", os.path.join(self.BASE_DIR, "output"))
+        self.LOG_DIR = os.environ.get("LOG_DIR", os.path.join(self.BASE_DIR, "logs"))
         
-        # Ensure temp directory exists
-        os.makedirs(self.TEMP_DIR, exist_ok=True)
+        # Ensure directories exist
+        for directory in (self.TEMP_DIR, self.OUTPUT_DIR, self.LOG_DIR):
+            os.makedirs(directory, exist_ok=True)
     
     def get_quality_settings(self, quality: str) -> Dict[str, Any]:
         """Get quality settings for the specified quality level"""

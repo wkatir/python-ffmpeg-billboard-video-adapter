@@ -1,25 +1,30 @@
 """
-Utility functions for the FFmpeg Billboard Video Adapter
+Utility functions for the Campaign Adaptation Software
 """
 
 import os
 import tempfile
 import shutil
 import logging
+import time
+import json
+import zipfile
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Tuple
 import streamlit as st
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
-def setup_environment():
-    """Setup the application environment"""
-    
-    # Create necessary directories
+def ensure_dirs():
+    """Ensure necessary directories exist"""
     directories = ["temp", "output", "logs"]
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
+
+def setup_environment():
+    """Setup the application environment"""
+    ensure_dirs()
     
     # Setup logging
     log_file = os.path.join("logs", "app.log")
@@ -32,7 +37,7 @@ def setup_environment():
         ]
     )
     
-    logger.info("Environment setup completed")
+    logger.info("Campaign Adaptation Software environment setup completed")
 
 def validate_file_type(uploaded_file) -> bool:
     """Validate if the uploaded file is a supported video format"""
@@ -141,6 +146,20 @@ def validate_ffmpeg_installation() -> bool:
         logger.error(f"FFmpeg validation failed: {str(e)}")
         return False
 
+def versioned_output_name(src_name: str, profile_key: str, suffix: str = ".mp4") -> str:
+    """Create versioned output filename"""
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    base = Path(src_name).stem
+    return safe_filename(f"{base}__{profile_key}__{timestamp}{suffix}")
+
+def write_zip(output_files: List[str], zip_path: str) -> str:
+    """Create ZIP file with output files"""
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for file_path in output_files:
+            if os.path.exists(file_path):
+                zf.write(file_path, arcname=os.path.basename(file_path))
+    return zip_path
+
 def get_video_info(file_path: str) -> dict:
     """Get video file information using FFmpeg"""
     try:
@@ -162,10 +181,21 @@ def get_video_info(file_path: str) -> dict:
         video_streams = [stream for stream in probe['streams'] if stream['codec_type'] == 'video']
         if video_streams:
             video_stream = video_streams[0]
+            # Fix the unsafe eval usage
+            frame_rate_str = video_stream.get('r_frame_rate', '0/1')
+            try:
+                if '/' in frame_rate_str:
+                    numerator, denominator = frame_rate_str.split('/')
+                    fps = float(numerator) / float(denominator) if float(denominator) != 0 else 0.0
+                else:
+                    fps = float(frame_rate_str)
+            except (ValueError, ZeroDivisionError):
+                fps = 0.0
+                
             video_info.update({
                 "width": video_stream.get('width', 0),
                 "height": video_stream.get('height', 0),
-                "fps": eval(video_stream.get('r_frame_rate', '0/1')),
+                "fps": fps,
                 "codec": video_stream.get('codec_name', 'unknown')
             })
         

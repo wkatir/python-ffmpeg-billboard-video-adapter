@@ -1,31 +1,33 @@
-# 🎬 FFmpeg Billboard Video Adapter
+# 🧩 Campaign Adaptation Software
 
-A powerful Streamlit web application that combines FFmpeg video processing with Google Gemini AI for intelligent video analysis and conversion.
+A powerful Streamlit web application for intelligent video adaptation to billboard and LED display formats, combining FFmpeg video processing with Google Gemini AI for smart content-aware cropping.
 
 ## ✨ Features
 
-- **Video Format Conversion**: Convert between multiple video formats (MP4, AVI, MOV, MKV, etc.)
-- **Quality Control**: Adjust video quality with predefined settings (low, medium, high, ultra)
-- **AI-Powered Analysis**: Use Google Gemini AI to analyze video content and generate insights
-- **Frame Extraction**: Extract frames from videos for detailed analysis
-- **Thumbnail Generation**: Create video thumbnails automatically
-- **Real-time Progress**: Track processing progress with visual indicators
-- **User-Friendly Interface**: Intuitive Streamlit web interface
-- **Comprehensive Logging**: Detailed logging for debugging and monitoring
+- **Billboard Format Adaptation**: Specialized profiles for LED displays and digital billboards
+- **Intelligent Cropping**: AI-guided cropping that protects logos, text, and faces
+- **Aspect Ratio Preservation**: FIT (pad/letterbox) and FILL (crop) modes
+- **Blurred Background Extension**: Elegant background extension for FIT mode
+- **Legibility Enhancement**: Automatic sharpening and contrast boost for billboard content
+- **Batch Export**: Process multiple formats simultaneously with ZIP download
+- **ROI Detection**: Google Gemini AI detects regions of interest to preserve
+- **QA Preview**: Thumbnail and clip preview for quality assurance
+- **Real-time Processing**: Live progress tracking and preview generation
 
 ## 🛠️ Tech Stack
 
 - **Python**: 3.9+ (tested with 3.13)
 - **Streamlit**: Interactive web application framework
 - **FFmpeg**: Professional video processing engine
-- **Google Gemini AI**: Advanced AI for video content analysis
+- **Google Gemini AI**: AI-powered ROI detection and content analysis
 - **FFmpeg-Python**: Python bindings for FFmpeg
+- **imageio-ffmpeg**: Bundled FFmpeg executable
 
 ## 📋 Prerequisites
 
 - Python 3.9 or higher
-- FFmpeg installed on your system
-- Google Gemini API key
+- FFmpeg installed on your system (or use bundled imageio-ffmpeg)
+- Google Gemini API key (optional, for AI-guided features)
 - Windows PowerShell (for Windows users)
 
 ### Installing FFmpeg
@@ -97,72 +99,90 @@ The application will open in your default web browser at `http://localhost:8501`
 
 ## 📖 Usage Guide
 
-### Basic Video Processing
+### Campaign Video Adaptation
 
-1. **Upload Video**: Click "Choose a video file" and select your video
-2. **Configure Settings**: 
-   - Choose output format (MP4, AVI, MOV, MKV)
-   - Select quality level (low, medium, high, ultra)
-   - Enable/disable AI analysis
-3. **Process**: Click "🚀 Process Video" to start conversion
-4. **Download**: Download the processed video when complete
+1. **Upload Video**: Select your campaign video (MP4, AVI, MOV, MKV, WMV, FLV, WEBM, M4V)
+2. **Configure Adaptation Settings**:
+   - **Mode**: Choose FIT (pad/letterbox) or FILL (crop to fill)
+   - **Blur Background**: Enable elegant background extension for FIT mode
+   - **Legibility Boost**: Enhance sharpening and contrast for billboard viewing
+3. **Select Target Formats**:
+   - **LED Displays**: Standard LED format profiles (16:9, 9:16, 4:3, ultra-wide)
+   - **Billboards**: Digital billboard format profiles
+   - **Custom**: Define your own width x height format
+4. **AI-Guided Cropping** (Optional):
+   - Enable AI analysis to detect and protect logos, text, and faces
+   - Adjust sampling rate and frame analysis limits
+5. **Process**:
+   - **Single**: Adapt to first selected format
+   - **Batch**: Export all selected formats as ZIP
+6. **Quality Assurance**: Preview thumbnail and verify safe areas
 
-### AI Analysis Features
+### Adaptation Modes
 
-When AI analysis is enabled, the application will:
-- Extract key frames from your video
-- Analyze content using Google Gemini AI
-- Generate comprehensive summaries
-- Identify objects, scenes, and activities
-- Provide detailed insights about video content
+- **FIT Mode**: Preserves original aspect ratio, adds padding (letterbox/pillarbox)
+  - Optional blurred background extension for aesthetic appeal
+- **FILL Mode**: Crops video to fill target aspect ratio completely
+  - AI-guided center positioning to protect important content
 
-### Quality Settings
+### Built-in Format Profiles
 
-- **Low**: 640x480, 500k video bitrate, 64k audio bitrate
-- **Medium**: 1280x720, 1000k video bitrate, 128k audio bitrate  
-- **High**: 1920x1080, 2000k video bitrate, 192k audio bitrate
-- **Ultra**: 1920x1080, 4000k video bitrate, 320k audio bitrate
+**LED Displays:**
+- LED_16x9_FHD: 1920x1080@30fps (Full HD landscape)
+- LED_9x16_FHD: 1080x1920@30fps (Full HD portrait)
+- LED_4x3_XGA: 1024x768@30fps (Traditional aspect ratio)
+- LED_960x320: 960x320@30fps (Ultra-wide strip displays)
+- LED_256x128: 256x128@25fps (Low-res matrix displays)
+
+**Digital Billboards:**
+- BILLBOARD_14x48: 1680x480@30fps (Standard billboard)
+- BILLBOARD_12x24: 1440x720@30fps (Junior billboard)
+- BILLBOARD_6x12: 720x360@30fps (Poster billboard)
 
 ## 🏗️ Project Structure
 
 ```
 .
-├── app.py                  # Main Streamlit application
+├── app.py                  # Main Campaign Adaptation application
 ├── src/                    # Source code modules
 │   ├── __init__.py        # Package initialization
 │   ├── config.py          # Configuration management
+│   ├── formats.py         # Billboard/LED format profiles
 │   ├── utils.py           # Utility functions
-│   ├── video_processor.py # FFmpeg video processing
-│   └── gemini_client.py   # Google Gemini AI integration
+│   ├── video_processor.py # Specialized video adaptation engine
+│   └── gemini_client.py   # ROI detection with Google Gemini AI
 ├── temp/                  # Temporary files (auto-created)
-├── output/                # Output files (auto-created)
+├── output/                # Adapted videos and ZIP exports (auto-created)
 ├── logs/                  # Application logs (auto-created)
-├── .env.template          # Environment template
+├── requirements.txt       # Python dependencies
 ├── .gitignore            # Git ignore rules
-└── README.md             # This file
+└── README.md             # This documentation
 ```
 
 ## ⚙️ Configuration
 
 ### Environment Variables
 
-Copy `.env.template` to `.env` and configure:
+Set the following environment variables:
 
-```env
+```bash
+# Required for AI-guided features (optional)
 GOOGLE_API_KEY=your_gemini_api_key_here
+
+# Optional customizations
 MAX_FILE_SIZE_MB=500
-DEFAULT_OUTPUT_FORMAT=mp4
-DEFAULT_QUALITY=high
-LOG_LEVEL=INFO
+TEMP_DIR=./temp
+OUTPUT_DIR=./output
+LOG_DIR=./logs
 ```
 
 ### Application Settings
 
 Settings can be configured in `src/config.py`:
-- Supported video formats
-- Quality presets
+- Billboard and LED format profiles
+- Adaptation modes and parameters
 - File size limits
-- Processing options
+- AI analysis settings
 
 ## 🔧 Advanced Usage
 
@@ -263,4 +283,4 @@ For support and questions:
 
 ---
 
-**Made with ❤️ using Python, FFmpeg, and Google Gemini AI**
+**Made with ❤️ for the digital advertising industry using Python, FFmpeg, and Google Gemini AI**
