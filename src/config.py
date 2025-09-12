@@ -86,18 +86,30 @@ class Config:
         return file_extension.lower() in self.SUPPORTED_FORMATS
     
     def get_gemini_api_key(self) -> str:
-        """Get Gemini API key from environment or Streamlit secrets"""
-        # Try environment variable first
+        """Get Gemini API key from Streamlit secrets or environment"""
+        # Try Streamlit secrets first (preferred method)
+        try:
+            # Try the structured approach first
+            api_key = st.secrets["api_keys"]["google_ai_studio"]
+            if api_key:
+                return api_key
+        except:
+            pass
+        
+        try:
+            # Try alternative secret key structure
+            api_key = st.secrets["google"]["api_key"]
+            if api_key:
+                return api_key
+        except:
+            pass
+        
+        # Fallback to environment variable
         api_key = os.environ.get("GOOGLE_API_KEY")
+        if api_key:
+            return api_key
         
-        # Try Streamlit secrets if environment variable not found
-        if not api_key:
-            try:
-                api_key = st.secrets.get("GOOGLE_API_KEY")
-            except:
-                pass
-        
-        return api_key or ""
+        return ""
     
     def validate_config(self) -> Dict[str, bool]:
         """Validate current configuration"""

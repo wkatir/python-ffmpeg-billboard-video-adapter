@@ -40,6 +40,7 @@ class VideoProcessor:
         target_h: int,
         mode: str = "fit",           # "fit" (pad) or "fill" (crop)
         blur_bg: bool = False,
+        mirror_bg: bool = False,     # NEW: mirror-pad extension
         legibility_boost: bool = False,
         roi_center: Optional[Tuple[float,float]] = None,   # (cx, cy) relative
         output_path: Optional[str] = None,
@@ -62,7 +63,7 @@ class VideoProcessor:
             Path to adapted video
         """
         
-            if not output_path:
+        if not output_path:
             output_path = os.path.join(self.config.TEMP_DIR, f"{Path(input_path).stem}_adapted.mp4")
         
         logger.info(f"Adapting {input_path} to {target_w}x{target_h} ({mode} mode)")
@@ -82,27 +83,32 @@ class VideoProcessor:
                 self._run_complex_filter(input_path, output_path, filter_complex, fps=fps, legibility_boost=legibility_boost)
                 return output_path
             else:
-                # Simple pad mode
+                # Simple pad mode - scale and pad
                 vf_chain.append(f"scale={target_w}:{target_h}:force_original_aspect_ratio=decrease")
-                vf_chain.append(f"pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2")
+                vf_chain.append(f"pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2:color=black")
         else:  # fill (crop)
-            # Use ROI center if available, otherwise center crop
-            cx, cy = (0.5, 0.5) if not roi_center else roi_center
+            # Simplified crop mode - scale to fill and crop center
             vf_chain.append(f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase")
-            
-            # Calculate crop position based on center
-            x_expr = f"clip(iw*{cx:.6f} - ow/2, 0, iw-ow)"
-            y_expr = f"clip(ih*{cy:.6f} - oh/2, 0, ih-oh)"
-            vf_chain.append(f"crop={target_w}:{target_h}:{x_expr}:{y_expr}")
+            vf_chain.append(f"crop={target_w}:{target_h}")
         
         # Add legibility enhancement
         if legibility_boost:
             vf_chain.append("eq=contrast=1.05:brightness=0.02:saturation=1.08")
             vf_chain.append("unsharp=lx=5:ly=5:la=0.7")
         
+        # Validate and build filter string
+        if not vf_chain:
+            raise Exception("No video filters generated - this shouldn't happen")
+        
         vf = ",".join(vf_chain)
+        logger.info(f"Generated video filter chain: {vf}")
+        
+        # Validate filter string
+        if not vf or vf.strip() == "":
+            raise Exception("Empty video filter chain generated")
+        
         self._run_simple_filter(input_path, output_path, vf, fps=fps)
-            return output_path
+        return output_path
     
     def batch_adapt(
         self,
@@ -284,20 +290,48 @@ class VideoProcessor:
     
     def _run_simple_filter(self, input_path: str, output_path: str, vf: str, fps: Optional[int] = None):
         """Run simple video filter"""
-        stream = ffmpeg.input(input_path)
-        kwargs = {
-            'vf': vf, 
-            'vcodec': 'libx264', 
-            'acodec': 'aac', 
-            'movflags': '+faststart', 
-            'preset': 'medium'
-        }
-        if fps: 
-            kwargs['r'] = fps
+        try:
+            logger.info(f"Running FFmpeg with filter: {vf}")
+            logger.info(f"Input: {input_path}")
+            logger.info(f"Output: {output_path}")
             
-        (stream.output(output_path, **kwargs)
-               .overwrite_output()
-               .run(cmd=self.ffmpeg_path, quiet=True))
+            # Use the string-based filter approach but with validation
+            stream = ffmpeg.input(input_path)
+            
+            output_args = {
+                'vcodec': 'libx264', 
+                'acodec': 'aac', 
+                'preset': 'fast',
+                'pix_fmt': 'yuv420p',
+                'movflags': '+faststart'
+            }
+            
+            # Only add vf if it's not empty
+            if vf and vf.strip():
+                output_args['vf'] = vf
+            
+            if fps: 
+                output_args['r'] = fps
+                
+            logger.info(f"FFmpeg output args: {output_args}")
+            
+            (stream.output(output_path, **output_args)
+                   .overwrite_output()
+                   .run(cmd=self.ffmpeg_path, quiet=False, capture_stdout=True, capture_stderr=True))
+            
+            logger.info(f"FFmpeg processing completed successfully: {output_path}")
+            
+        except ffmpeg.Error as e:
+            logger.error(f"FFmpeg error in _run_simple_filter: {e}")
+            if hasattr(e, 'stderr') and e.stderr:
+                stderr_msg = e.stderr.decode('utf-8') if isinstance(e.stderr, bytes) else str(e.stderr)
+                logger.error(f"FFmpeg stderr: {stderr_msg}")
+                raise Exception(f"FFmpeg processing failed: {stderr_msg}")
+            else:
+                raise Exception(f"FFmpeg processing failed: {str(e)}")
+        except Exception as e:
+            logger.error(f"Video processing error in _run_simple_filter: {e}")
+            raise Exception(f"Video processing failed: {str(e)}")
     
     def _run_complex_filter(
         self, 

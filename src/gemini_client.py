@@ -91,13 +91,17 @@ class GeminiClient:
                 generation_config={"response_mime_type": "application/json"}
             )
             
+            logger.info(f"Gemini raw response: {response.text}")
+            
             # Parse JSON response
             data = {}
             try:
                 data = json.loads(response.text or "{}")
+                logger.info(f"Parsed JSON data: {data}")
             except json.JSONDecodeError:
                 # Fallback: try to extract JSON from code block
                 text = (response.text or "").strip()
+                logger.info(f"JSON decode failed, trying fallback with text: {text[:200]}...")
                 if text.startswith("```") and text.endswith("```"):
                     text = text.strip("```").strip()
                     if text.startswith("json"):
@@ -105,8 +109,11 @@ class GeminiClient:
                     data = json.loads(text)
                 else:
                     data = json.loads(text) if text else {}
+                logger.info(f"Fallback parsed data: {data}")
             
-            return data.get("regions", [])
+            regions = data.get("regions", [])
+            logger.info(f"Extracted {len(regions)} regions from response")
+            return regions
             
         except Exception as e:
             logger.warning(f"ROI detection failed: {str(e)}")
@@ -158,25 +165,46 @@ class GeminiClient:
             Suggested center (cx, cy) in relative coordinates [0..1] or None
         """
         all_regions = []
+        successful_frames = 0
         
-        for frame_path in frame_images:
+        logger.info(f"Starting AI analysis of {len(frame_images)} frames")
+        
+        for i, frame_path in enumerate(frame_images):
             try:
+                logger.info(f"Analyzing frame {i+1}/{len(frame_images)}: {frame_path}")
                 regions = self.detect_protected_regions(frame_path)
+                
+                if regions:
+                    logger.info(f"Frame {i+1}: Found {len(regions)} protected regions")
+                    for j, region in enumerate(regions[:3]):  # Log first 3 regions
+                        logger.info(f"  Region {j+1}: x={region.get('x', 0):.3f}, y={region.get('y', 0):.3f}, w={region.get('w', 0):.3f}, h={region.get('h', 0):.3f}")
+                    successful_frames += 1
+                else:
+                    logger.info(f"Frame {i+1}: No protected regions detected")
+                
                 # Limit regions per frame to avoid too many detections
                 all_regions.extend(regions[:3])
+                
             except Exception as e:
-                logger.warning(f"ROI detection failed for frame: {str(e)}")
+                logger.warning(f"ROI detection failed for frame {i+1}: {str(e)}")
                 continue
+        
+        logger.info(f"AI analysis complete: {successful_frames}/{len(frame_images)} frames processed successfully")
+        logger.info(f"Total regions detected: {len(all_regions)}")
         
         # Calculate union of all detected regions
         union = self.union_regions(all_regions)
         
         if not union:
+            logger.info("No union region calculated - using default center")
             return None
         
         x, y, w, h = union
+        center_x, center_y = x + w / 2.0, y + h / 2.0
+        logger.info(f"Calculated optimal crop center: ({center_x:.3f}, {center_y:.3f}) from union region ({x:.3f}, {y:.3f}, {w:.3f}, {h:.3f})")
+        
         # Return center of the union region
-        return (x + w / 2.0, y + h / 2.0)
+        return (center_x, center_y)
     
     def analyze_image(self, image_path: str, prompt: Optional[str] = None) -> Dict[str, Any]:
         """
